@@ -1,0 +1,11 @@
+# 機微情報はコミットしない
+secrets/
+*.secret.yml
+*.secret.yaml
+
+# OS/エディタ
+Thumbs.db
+Desktop.ini
+.DS_Store
+*.tmp
+~$*

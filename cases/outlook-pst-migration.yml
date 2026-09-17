@@ -1,0 +1,54 @@
+# ITサポート ナレッジベース 事例(試作 / スキーマ検証用の1件目)
+#
+# 目的: 問い合わせ・トラブルは毎回違う「見え方」で来るため、人間の全文検索では
+#       既存事例に該当すると気づけない。AI(Kiro)が意味で橋渡しできるよう、
+#       1事例を多面的なフィールドで構造化する「AIが引く台帳」。
+#       人間向けの手順書(やさしい言葉のステップ)は、この原本から生成する副産物とする。
+#
+# スキーマ(検証中。使いながら増減する):
+#   id           : 一意ID(ファイル名と対応)
+#   title        : 事例の要約タイトル
+#   category     : 大分類(メール / ネットワーク / プリンタ / PC全般 ...)
+#   symptoms     : ユーザーから見えた現象。言い回しの揺れを配列で複数持つ(検索の入口)
+#   context      : どんな局面で起きるか(PC入れ替え直後 等)
+#   root_cause   : 技術的な真因(ここが同じ事例同士は related で繋ぐ)
+#   targets      : 関係する機器/ソフト(Outlook, 共有フォルダ 等)
+#   resolution   : 対処の要点(手順)。詳細手順書があれば doc_ref で参照
+#   doc_ref      : 生成/配布用の手順書へのパス(あれば)
+#   related      : 根が同じ/関連する他事例のid(半自動: Kiroが提案し人が承認)
+#   keywords     : 追加の検索語(製品名・エラー文言など)
+#   severity     : 影響度(low/medium/high) ※任意
+#   status       : draft / confirmed(現場で有効性を確認済みか)
+
+meta:
+  updated: "2026-09-16"
+  maintainer: "Kiro (AI保守) + 情シス"
+  purpose: "AIが関連性を橋渡しするための構造化事例ベース。人間向け手順書は生成物。"
+  note: "一人運用の試行段階。スキーマは固定せず育てる。共同編集は形が固まってから。"
+
+cases:
+  - id: outlook-pst-migration
+    title: "PC入れ替え時に Outlook のメール(.pst)を新PCへ移す"
+    category: メール
+    symptoms:
+      - "新しいPCにすると過去のメールが見られない"
+      - "PCを替えたら受信トレイが空になった"
+      - "メールの履歴・フォルダが消えた"
+      - "Outlookに古いメールが入っていない"
+    context:
+      - "パソコン入れ替え(データ移行)"
+      - "旧PC→新PCへの移行作業中"
+    root_cause: "Outlookのメール本体である .pst ファイルが新PCに移行されていない(旧PCのドキュメント内に残ったまま)"
+    targets: ["Outlook", ".pstファイル", "共有フォルダ", "ユーザープロファイル"]
+    resolution:
+      - "旧PCの C:\\ユーザー\\sh××××××××.SH-KIMITSU\\ドキュメント\\Outlook ファイル を開く"
+      - "自分のメールアドレスと同名の .pst をコピー(作業中はOutlookを終了)"
+      - "新PCの同じ場所へ渡し、既存の同名 .pst と置き換える"
+      - "容量により数十分〜数時間かかる"
+    doc_ref: "手順書: Outlook_pstコピー手順(Downloads/Outlook_pstコピー手順.md, .pdf)"
+    related:
+      # 根が同じ/隣接する事例が増えたらここで繋ぐ(例: Live Mail過去メール移行, Outlookプロファイル再設定)
+      []
+    keywords: ["pst", "Outlook", "メール移行", "PC入れ替え", "SH-KIMITSU", "データ移行"]
+    severity: medium
+    status: confirmed
