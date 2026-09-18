@@ -47,8 +47,8 @@ cases:
       - "容量により数十分〜数時間かかる"
     doc_ref: "手順書: Outlook_pstコピー手順(Downloads/Outlook_pstコピー手順.md, .pdf)"
     related:
-      # 根が同じ/隣接する事例が増えたらここで繋ぐ(例: Live Mail過去メール移行, Outlookプロファイル再設定)
-      []
+      # 根が同じ/隣接する事例。移行後にpstを開けない派生トラブルを繋ぐ
+      - outlook-pst-access-denied
     keywords: ["pst", "Outlook", "メール移行", "PC入れ替え", "SH-KIMITSU", "データ移行"]
     severity: medium
     status: confirmed
