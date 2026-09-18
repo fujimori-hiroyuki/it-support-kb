@@ -100,6 +100,10 @@ cases:
     related:
       - outlook-pst-migration
       - outlook-pst-access-denied
+      # キッティングで撤去すべき旧ソフト(Cylance等)の残存問題
+      - cylance-uninstall-leftover
+      # 起動エラーはメール設定手順とも関連
+      - outlook-spinning-auth-error
     keywords:
       - "キッティング"
       - "PC新規設定"

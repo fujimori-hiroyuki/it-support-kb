@@ -51,6 +51,8 @@ cases:
       - outlook-pst-access-denied
       # メール移行はキッティング手順の一部でもある
       - pc-kitting-setup
+      # Outlook起動時のグルグル/認証エラー(多発)
+      - outlook-spinning-auth-error
     keywords: ["pst", "Outlook", "メール移行", "PC入れ替え", "SH-KIMITSU", "データ移行"]
     severity: medium
     status: confirmed

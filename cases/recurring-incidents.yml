@@ -1,0 +1,180 @@
+# ITサポート ナレッジベース 事例(5ファイル目 / 障害台帳から抽出した多発テーマ)
+#
+# 出典: 障害受付台帳「ディフィカルティ一覧.csv」(D001〜D060, 2026)。
+# 台帳(1行1インシデントの記録)そのものは原本にしない。台帳から『複数拠点/複数回で再発している
+# テーマ』を選び、次回引く価値のあるナレッジとして構造化した。1回きり・拠点固有の雑件
+# (配線整理, メダカ観察カメラ有線化 等)は再利用性が低いため事例化しない。
+#
+# status の考え方: 未解決でも多発パターン・切り分け知見は価値があるため登録する。
+#   解決/真因確定 = confirmed、調査中/回避のみ = draft。
+#
+# 注意: 真因が台帳の1行症状からは断定できないものは仮説として書き、caveats に留保を明記する。
+
+meta:
+  updated: "2026-09-18"
+  maintainer: "Kiro (AI保守) + 情シス"
+  purpose: "AIが関連性を橋渡しするための構造化事例ベース。人間向け手順書は生成物。"
+  note: >
+    障害台帳CSVから多発テーマを抽出。台帳自体は記録であって原本にしない。
+    IT-asset-management の network.yml / access-points.yml / wlx-config.yml の構成情報と整合させた。
+
+cases:
+  # ============================================================
+  - id: network-slow-getsumoku
+    title: "『月木遅い問題』— 特定曜日(月・木)に全社ネットワークが遅くなる/グルグル/ログアウト強要"
+    category: ネットワーク
+    kind: trouble
+    symptoms:
+      - "月曜と木曜になるとネットが遅い"
+      - "特定の曜日だけ通信がグルグルする"
+      - "遅い・グルグル・ログアウトを強要される"
+      - "火水と継続して遅い(曜日がずれて観測されることもある)"
+      - "LINEWORKSのビデオ会議が繋がりにくい/遅い"
+    context:
+      - "全社・複数拠点で同時多発"
+      - "SmartVPN経由でデータセンターへ抜ける拠点"
+      - "台帳で最も工数がかかっている再発案件(D008/D047/D052 等、累計70h超)"
+    diagnosis:
+      - step: "発生曜日・時間帯に規則性があるか(月/木に集中しているか)を確認"
+        result: "曜日性がある → 定期処理(バックアップ/更新配信/一斉処理)や特定トラフィックの輻輳を疑う"
+      - step: "遅いトラフィックの宛先を切り分け(PROXY2経由のWeb閲覧か、①VPN回線側か)"
+        result: "network.yml では Web閲覧=②PROXY2(192.168.126.13)経由のベストエフォート回線、LINEWORKS/更新=①VPN回線。どちらが詰まっているかで対処が変わる"
+      - step: "LINEWORKSの扱いを確認"
+        result: "LINEWORKSはPROXY2非経由で①VPN回線を通る(フロー集計で'proxy以外'に大量計上と整合)。会議品質劣化は①回線の輻輳と関連しうる"
+    cause: >
+      真因は未確定(台帳上は『済』だが恒久対策済みとは限らない)。有力仮説は、特定曜日に集中する
+      トラフィック(Windows更新配信・バックアップ・一斉業務処理等)と、ベストエフォート回線(②PROXY2)
+      および①VPN回線の帯域輻輳の重なり。SmartVPN経由拠点で影響が広がる。
+    resolution:
+      - "まず宛先ベースで切り分け(PROXY2経由Web か ①VPN回線トラフィックか)"
+      - "曜日性のある大量トラフィック(更新配信・バックアップ窓)を特定し、時間帯分散/QoSを検討"
+      - "本社はSD-WAN(FortiGate80F)で④300Mへローカルブレイクアウト済み。SD-WAN無し拠点は①VPN回線に集中するため、恒久対策として同様のブレイクアウトや帯域増強を検討"
+      - "Zabbix/フロー集計で回線別の使用率を継続監視し、輻輳の実データを取る"
+    verification:
+      - "対策後、該当曜日・時間帯に体感速度とフロー使用率が改善すること"
+      - "LINEWORKS会議の品質が改善すること"
+    caveats:
+      - "台帳の『済』は個別対応の完了であり、全社的な恒久対策の完了とは限らない。恒久策は継続課題"
+      - "真因は仮説。回線別の実トラフィックデータ(ip_traffic_report / Elastic宛先IP集計)で裏取りが必要"
+      - "曜日の観測はブレることがある(D015は火水と記録)。規則性の再確認が要る"
+    related:
+      - wifi-deco-underpowered
+    keywords: ["月木遅い", "ネット遅い", "グルグル", "LINEWORKS", "SmartVPN", "PROXY2", "回線輻輳", "全社"]
+    severity: high
+    status: draft
+
+  # ============================================================
+  - id: wifi-deco-underpowered
+    title: "拠点Wi-Fiが非力/不調 — TP-Link Deco・ELECOM等の簡易APで速度不足やLINEWORKS不可"
+    category: ネットワーク
+    kind: trouble
+    symptoms:
+      - "拠点のwifiが遅い/使えない"
+      - "decoのwifiが非力で足りない"
+      - "wifiがelecomで力不足"
+      - "wifi不調で重役からクレーム"
+      - "設計課のofficeでwifi(deco)が使えない"
+      - "wifiだと画像が来ない/有線なら来る"
+      - "wifiでLINEWORKSが活用できない"
+    context:
+      - "複数拠点で多発(WH浦和/大宮/上尾/Miraiz/有明相良 等)"
+      - "コンシューマ向け簡易AP(TP-Link Deco, ELECOM)を業務利用しているケース"
+    diagnosis:
+      - step: "設置APの機種を確認(Deco/ELECOM等の簡易機か、業務用APか)"
+        result: "簡易機 → 同時接続数・スループット・ローミングが業務要件に不足しがち"
+      - step: "有線では正常か切り分け"
+        result: "有線OKでwifiのみ不調 → 無線区間(AP能力/電波/干渉)の問題に絞れる"
+      - step: "台数・カバレッジ・干渉を確認"
+        result: "AP不足/配置不良/2.4GHz混雑等。業務端末数に対して能力不足なら機器更改が必要"
+    cause: >
+      コンシューマ向け簡易AP(Deco/ELECOM)を業務規模で使っていることによる能力不足(同時接続/帯域/
+      ローミング)。本社では業務用 YAMAHA WLX222 のクラスター運用へ移行中(wlx-config.yml)であり、
+      拠点も同様に業務用APへ更改するのが恒久策の方向。
+    resolution:
+      - "有線/無線の切り分けで無線区間の問題と確定させる"
+      - "暫定: AP再配置・チャネル調整・台数追加で緩和"
+      - "恒久: 業務用AP(例 YAMAHA WLX222 の仮想コントローラー運用)へ更改。本社の導入実績(wlx-config.yml)を横展開"
+      - "本社DecoのAP台帳・IPは access-points.yml(A001, 9台)に整備済み。監視はZabbix ICMP Pingで稼働中"
+    caveats:
+      - "『wifiが使えない』の台帳行が多数(D054〜D060等)あるが詳細未記入。個別に症状を確定させる必要がある"
+      - "簡易AP自体が悪いのではなく『業務規模での使用』がミスマッチ。小規模拠点なら簡易機で足りる場合もある"
+    related:
+      - network-slow-getsumoku
+    keywords: ["wifi", "deco", "TP-Link", "ELECOM", "無線AP", "WLX222", "LINEWORKS", "拠点", "電波"]
+    severity: medium
+    status: draft
+
+  # ============================================================
+  - id: outlook-spinning-auth-error
+    title: "Outlookが起動時にグルグル/認証エラーになる(複数拠点で再発)"
+    category: メール
+    kind: trouble
+    symptoms:
+      - "outlookがグルグルして開かない"
+      - "outlook起動時に認証エラーが出る"
+      - "outlook起動時にエラー(修復で復旧した)"
+      - "メールが読み込めない/同期が終わらない"
+    context:
+      - "複数拠点で再発(横浜くらし館/甲府昭和/アイクリ佐々木 等)"
+      - "Microsoft365 + Outlook(classic) 環境"
+    diagnosis:
+      - step: "エラーの種類を確認(グルグルのみか、明示的な認証エラーか)"
+        result: "認証エラー → M365アカウント資格情報/トークン失効を疑う。グルグルのみ → プロファイル/OSTの問題を疑う"
+      - step: "Outlookの修復を試す"
+        result: "台帳D038では『修復で復旧』の実績あり。まず修復が有効"
+      - step: "M365で再サインイン/資格情報マネージャーの古い資格情報を削除"
+        result: "認証系ならこれで解消することが多い"
+    cause: >
+      複合要因。(a) M365アカウントの認証トークン失効/資格情報の不整合、(b) Outlookプロファイルや
+      OST破損。台帳では『修復で復旧』の例があり、まず修復・再サインインで解消するケースが多い。
+    resolution:
+      - "Outlookの修復(コントロールパネル→プログラム→Office→修復、またはオンライン修復)"
+      - "M365で再サインイン。資格情報マネージャーの古い Office/Outlook 資格情報を削除して再認証"
+      - "改善しなければ Outlook プロファイル再作成"
+      - "POP設定でパスワード相違ならαメール管理画面でPW変更(pc-kitting-setup の手順参照)"
+    verification:
+      - "Outlookが正常に起動し、送受信・フォルダ表示が正常なこと"
+    caveats:
+      - "真因は事例ごとに異なりうる(認証系/プロファイル系)。まず修復→再サインインの順で切り分ける"
+    related:
+      - outlook-pst-migration
+      - pc-kitting-setup
+    keywords: ["Outlook", "グルグル", "認証エラー", "起動エラー", "Microsoft365", "修復", "POP", "αメール"]
+    severity: medium
+    status: confirmed
+
+  # ============================================================
+  - id: cylance-uninstall-leftover
+    title: "CylancePROTECT のアンインストール漏れ(全拠点で残存)"
+    category: PC全般/セキュリティソフト
+    kind: trouble
+    symptoms:
+      - "cylancePROTECTのアンインストール漏れ"
+      - "旧EDR/アンチウイルスが残ったままになっている"
+      - "使っていないはずのCylanceが端末に残存している"
+    context:
+      - "全拠点規模の棚卸し課題(台帳D013, 工数見積10h, 未解決)"
+      - "現行は Cybereason 運用、CylancePROTECT は不使用"
+    diagnosis:
+      - step: "端末に CylancePROTECT が残っていないか確認(インストール済みプログラム一覧)"
+        result: "残っていれば撤去対象。キッティング手順でも『Cylanceは入れない』と明記されている"
+      - step: "現行EDR(Cybereason)が正しく入っているか確認"
+        result: "Cybereasonはログオンスクリプトで自動導入される"
+    cause: >
+      過去に導入した CylancePROTECT が、現行 Cybereason への移行時に一部端末で撤去されず残存している。
+      キッティング手順(pc-kitting-setup)では新規端末に『Cylanceは入れない』が徹底されているが、
+      既存端末の遡及的な撤去が全拠点で未完了。
+    resolution:
+      - "撤去ツールで CylancePROTECT をアンインストール(手順は pc-kitting-setup の references 参照)"
+      - "全拠点の端末を棚卸しし、残存端末をリスト化して順次撤去"
+      - "撤去後 Cybereason が有効であることを確認"
+    verification:
+      - "対象端末から CylancePROTECT が消え、Cybereason が稼働していること"
+    caveats:
+      - "全拠点の端末棚卸しが前提のため一括では終わらない。台帳では未解決(未)"
+      - "SKYSEA/IDLM 等の他の旧ソフト撤去も同時に棚卸しすると効率的(撤去手順は pc-kitting-setup の references)"
+    related:
+      - pc-kitting-setup
+    keywords: ["Cylance", "CylancePROTECT", "アンインストール漏れ", "Cybereason", "EDR", "棚卸し", "全拠点", "SKYSEA", "IDLM"]
+    severity: medium
+    status: draft
