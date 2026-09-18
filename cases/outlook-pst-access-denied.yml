@@ -74,6 +74,8 @@ cases:
     doc_ref: "手順書: Outlook_pstコピー手順(cases/outlook-pst-migration の doc_ref と同一。置き換え方式であり、インポートは想定していない)"
     related:
       - outlook-pst-migration
+      # 真因『キッティング時の初期設定漏れ』側の事例
+      - pc-kitting-setup
     keywords:
       - "pst"
       - "Outlook"

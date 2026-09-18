@@ -1,0 +1,119 @@
+# ITサポート ナレッジベース 事例(4件目 / キッティング手順)
+#
+# 位置づけ: 貸与PCの新規設定(キッティング)手順書「2.1 パソコン新規設定手順.docx」を
+#           素材にYAML化したもの。docx/pdfは原本にしない方針のため、手順の骨子と勘所を
+#           構造化して残す。生docxは _work にのみ置き、リポジトリの原本にはしない。
+#
+# 脱機微化: 手順書に平文で書かれていた認証情報(管理者アカウント/パスワード, SQL Serverの
+#           sa/sa, αメール管理者ログイン, 共有パス上の資格情報 等)は @SECRET プレースホルダ化。
+#           実値は secrets/connections.yml (.gitignore) に置く。IPアドレス等の構成値は
+#           社内限定情報だが手順理解に必要な範囲で残す(必要なら別途マスキング検討)。
+#
+# 注意: これは「トラブル対処」ではなく「定型作業手順」の事例。診断層(diagnosis/cause)は
+#        キッティングでは馴染まないため、procedure(手順) + caveats(落とし穴) 中心の構成にする。
+#        同じスキーマに無理に押し込めず、事例種別に応じてフィールドを変える検証も兼ねる。
+
+meta:
+  updated: "2026-09-18"
+  maintainer: "Kiro (AI保守) + 情シス"
+  purpose: "AIが関連性を橋渡しするための構造化事例ベース。人間向け手順書は生成物。"
+  note: >
+    出典「2.1 パソコン新規設定手順.docx」。認証情報はプレースホルダ化済み。手順の抜け(初期設定漏れ)は
+    outlook-pst-access-denied の背景(前所有者環境ではなくキッティング漏れ)とも関連する。
+
+cases:
+  - id: pc-kitting-setup
+    title: "貸与PCの新規設定(キッティング)手順 — 新昭和ドメイン参加までの定型作業"
+    category: PC全般/キッティング
+    kind: procedure   # trouble ではなく定型作業手順
+    symptoms:
+      - "新しいPCをセットアップしたい"
+      - "貸与PCのキッティングをする"
+      - "PCの新規設定手順を知りたい"
+      - "パソコン入れ替え時の初期設定"
+    context:
+      - "社員貸与PCの新規登録・入れ替え"
+      - "新昭和ドメイン(shinshowa.co.jp / SH-KIMITSU)への参加を伴うセットアップ"
+    targets:
+      - "Active Directory (shinshowa.co.jp)"
+      - "Microsoft 365 / Office"
+      - "αメール(alpha-prm) / Outlook(classic)"
+      - "SQL Server ODBC (sns / ssw-entdb1)"
+      - "BitLocker"
+      - "Cybereason / (旧)Cylance / SKYSEA / IDLM"
+    # --- 手順(元手順書の骨子。認証情報は脱機微化) ---
+    procedure:
+      - phase: "新規登録時のみ (アカウント作成)"
+        steps:
+          - "AD にユーザ登録: shinshowa.co.jp → SHINSHOWA CORPORATION → Sh-Users-Default の既存ユーザをコピーして作成"
+          - "命名規則: ユーザ名 sh0<年度2桁>XXXX / コンピュータ名 C0<年度2桁>XXXX (C以降とsh以降を一致させる)"
+          - "全般タブ: 姓・名はカタカナ。表示名は『姓 名 sh0XXXX』(漢字姓名の間は半角スペース)"
+          - "アカウントタブ: ユーザーログオン名 sh0XXXX"
+          - "同一PCユーザ継続時は AD検索→該当ユーザ→名前の変更 で対応"
+          - "重要: 新規番号は作らず空き番号を優先(設定パソコン台帳を参照)"
+          - "Microsoft 365 管理センターでユーザ登録(@SECRET:m365.admin_login)。Officeライセンス割当"
+          - "αメール管理者画面(https://www.alpha-prm.jp/login.html)でメール登録(@SECRET:alpha.admin_login)。PWは10-32文字/大小英字/記号/数字/ドメイン部を含まない"
+      - phase: "ローカルログイン状態で設定"
+        steps:
+          - "ローカルユーザー作成: 名前は AD と同じ sh0XXXX、パスワードなし"
+          - "コンピュータの説明: 『○○課 姓名』を追記。コンピュータ名は sh→C に変更した名前で登録"
+          - "IP/DNS/WINS 設定: IPv6のチェックを外す。事前に新昭和ネットワークの有線LANを挿しておく"
+          - "  IP 192.168.65.xxx / Mask 255.255.255.0 / GW 192.168.65.241"
+          - "  優先DNS 192.168.201.1 / 代替DNS 10.1.1.101 (WINSも同値: 優先192.168.201.1 / 代替10.1.1.101)"
+          - "ドメイン参加: システム→ドメインまたはワークグループ→変更→ドメイン shinshowa.co.jp。ユーザID/初期PWを入力(@SECRET:ad.join_credential)"
+          - "ローカルユーザーのパスワードを空に: 管理者cmdで net user <ユーザーID> * (念のため実施)"
+          - "再起動しローカルユーザー(PWなし)で再ログイン"
+          - "アカウント追加: netplwiz → ユーザータブ→追加。2ユーザーを管理者権限で追加"
+          - "  ユーザ sh0XXXX / ドメイン sh-kimitsu、および ユーザ sh0XXXX / ドメイン C0XXXX (=コンピュータ名)"
+          - "  結果: SH-KIMITSU\\sh0XXXX と C0XXXX\\sh0XXXX の2つが管理者で追加される"
+          - "再起動してドメインログオン"
+      - phase: "ドメインログオン状態で設定"
+        steps:
+          - "デスクトップアイコン表示: ユーザフォルダ/PC/ネットワーク/ゴミ箱/コントロールパネル"
+          - "Internetチューニング: バッチ2つを管理者として実行 (元パス: \\\\10.1.1.206\\g増設\\初期設定ファイル\\Windows10_INSTファイル)"
+          - "フォルダオプション: 隠しファイル・フォルダを表示 / 登録された拡張子を表示(チェックを外す)"
+          - "ローカルセキュリティ(LAN Manager認証レベル): 管理ツール→ローカルセキュリティポリシー→ローカルポリシー→セキュリティオプション で『LMとNTLMを送信する(ネゴシエート時NTLMv2セッションセキュリティを使う)』に設定"
+          - "高速スタートアップ解除: 電源オプション→電源ボタンの動作→現在利用不可の設定を変更→『高速スタートアップを有効にする』のチェックを外す"
+          - ".NET Framework 3.5 / SMB を『Windowsの機能の有効化または無効化』で有効化"
+          - "ODBC設定(sns): ODBCデータソース(64bit)→追加→SQL Server。名前 sns / 説明 新基幹 / サーバ ssw-entdb1。SQL認証でログイン(@SECRET:odbc.sns_login)。既定DB SSDB。必ず接続テストを実施"
+          - "Microsoft 365 インストール: m365.cloud.microsoft/apps で対象ユーザーサインイン→アプリとデバイス→32ビットを選択→OfficeSetup.exe 実行。Excel等で一度サインイン"
+          - "Outlook: 既定(new)をタスクバーから外し Outlook(classic)を登録。classicを開いてM365アカウント入力"
+          - "Adobe Reader インストール (https://get.adobe.com/jp/reader/)"
+          - "INSTファイル(Windows10)からインストール: Desknets/TimePro ショートカット(計6種)、圧縮解凍(explz/Lhaca)、新基幹ポータル、新基幹お知らせチェック、パソコン入替手順PDFをデスクトップへ"
+          - "Outlookメール設定: M365サインイン後、shinshowa.co.jp のメアドを設定。詳細オプション→『自分で手動設定』→POP。@を%に変えてOK(PW相違時はαメール管理画面でPW変更=手順1.3)"
+          - "Cybereason はログオンスクリプトで自動インストール(CylancePROTECTは不使用=入れない)"
+          - "MACアドレス確認(新規時のみ): 管理者cmdで ipconfig /all のイーサネットMACをメモ。シリアルNo/プロダクトIDもPCの箱/裏で確認"
+          - "scan/共有フォルダ作成: Cドライブ直下に作成し共有。共有・scanともに Everyone/読み書き。デスクトップにショートカット。ファイルとプリンター共有をオンにすると接続可"
+          - "BitLocker有効化: 回復キーを『ファイルに保存』。ファイル名先頭に sh○○ を付けて所定パス(\\\\10.1.1.206\\g増設\\初期設定ファイル)へ保存。回復キーIDと回復キーは設定パソコン台帳に必ず記載"
+          - "配属先のIP設定(IP/DNS/WINS)。不明ならスキップ"
+          - "(設計用PC時のみ) Walk in home をインストール(\\\\192.168.201.24\\dtsソフト\\...WIH21インストーラー)。解凍が止まる場合は開き直し"
+          - "(指示時のみ) 電子印の設定は cmd のプルダウンから展開先を指定して設定"
+          - "設定パソコン台帳の更新: 新規は番号追加(空き番号優先)。継続作成はPC状況も更新し、BitLocker情報の欠落を補い前任者記録は消す。台帳更新後コンピュータ名変更で情報反映→印刷しPCに添付"
+    caveats:
+      - "手順書には管理者アカウント/パスワード, SQL Serverの sa/sa, αメール管理者ログイン等が平文で記載されていた。本YAMLではプレースホルダ化。実値は secrets/ に置き、リポジトリにコミットしない"
+      - "この初期設定を1つでも飛ばすと『新PCで更新できない/データ移行できない/保護がかかっているように見える』等の後続トラブルにつながる(cf. outlook-pst-access-denied の誤診: 前所有者環境ではなくキッティング漏れが真因のケース)"
+      - "手順書は Windows10 前提の記述が残る一方 Microsoft365/Outlook classic 等 新しい記述も混在。Win11 への追随や旧アプリ(Cylance/SKYSEA)撤去手順の整理が必要"
+      - "IPアドレス/共有パス/サーバ名は社内限定情報。外部公開リポジトリへ移す場合は追加マスキングを検討"
+    references:
+      - "アプリのアンインストール: CylanceProtect(Cylance_uninstall.vbs), SKYSEA(uninstaller, PW 7717), IDLM(コンパネ, PW=@SECRET:idlm.uninstall)"
+    doc_ref: "出典: 2.1 パソコン新規設定手順.docx (原本にはしない。_work に保管)"
+    related:
+      - outlook-pst-migration
+      - outlook-pst-access-denied
+    keywords:
+      - "キッティング"
+      - "PC新規設定"
+      - "初期設定"
+      - "ドメイン参加"
+      - "shinshowa.co.jp"
+      - "SH-KIMITSU"
+      - "Active Directory"
+      - "Microsoft365"
+      - "Outlook classic"
+      - "BitLocker"
+      - "ODBC"
+      - "Cybereason"
+      - "設定パソコン台帳"
+      - "パソコン入れ替え"
+    severity: medium
+    status: confirmed   # 現場運用中の手順書が出典のため

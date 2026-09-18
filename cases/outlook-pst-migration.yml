@@ -49,6 +49,8 @@ cases:
     related:
       # 根が同じ/隣接する事例。移行後にpstを開けない派生トラブルを繋ぐ
       - outlook-pst-access-denied
+      # メール移行はキッティング手順の一部でもある
+      - pc-kitting-setup
     keywords: ["pst", "Outlook", "メール移行", "PC入れ替え", "SH-KIMITSU", "データ移行"]
     severity: medium
     status: confirmed
